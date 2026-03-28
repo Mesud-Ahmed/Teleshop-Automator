@@ -3,15 +3,25 @@ import WebApp from '@twa-dev/sdk'
 import { CheckCircle2, ShoppingBag } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 
-// Initialize Supabase using environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANNON_KEY
+// Initialize Supabase safely
+let supabase = null;
+let initError = null;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error("Supabase environment variables are missing! Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANNON_KEY are set in frontend/.env")
+try {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANNON_KEY || ''
+  
+  if (!supabaseUrl) {
+    initError = "Missing VITE_SUPABASE_URL environment variable."
+  } else if (!supabaseKey) {
+    initError = "Missing VITE_SUPABASE_ANNON_KEY environment variable."
+  } else {
+    supabase = createClient(supabaseUrl, supabaseKey)
+  }
+} catch (e) {
+  initError = e.message;
 }
 
-const supabase = createClient(supabaseUrl || '', supabaseKey || '')
 
 function App() {
   const [formData, setFormData] = useState({
@@ -25,12 +35,28 @@ function App() {
   const [isSuccess, setIsSuccess] = useState(false)
   
   useEffect(() => {
-    // Notify telegram we are ready and expand the view
-    WebApp.ready()
-    WebApp.expand()
-    // Set header color to match dark mode theme
-    WebApp.setHeaderColor('#09090b')
+    try {
+      // Notify telegram we are ready and expand the view
+      WebApp.ready()
+      WebApp.expand()
+      // Set header color to match dark mode theme
+      WebApp.setHeaderColor('#09090b')
+    } catch (e) {
+      console.error("Telegram WebApp API error:", e)
+    }
   }, [])
+
+  if (initError) {
+    return (
+      <div className="min-h-screen bg-background p-6 flex flex-col items-center justify-center">
+        <div className="bg-destructive/20 text-destructive border border-destructive p-6 rounded-xl max-w-sm">
+          <h2 className="font-bold text-lg mb-2">Build Configuration Error</h2>
+          <p className="text-sm font-mono break-words">{initError}</p>
+          <p className="text-xs mt-4 text-muted-foreground">Make sure you have set the variables in Vercel before the build.</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target

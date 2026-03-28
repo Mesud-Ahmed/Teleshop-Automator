@@ -31,8 +31,9 @@ def main() -> None:
     setup_fulfillment_handlers(application)
 
     # Run the bot until the user presses Ctrl-C
+    from telegram import Update
     logger.info("Starting bot...")
-    application.run_polling(allowed_updates=Application.ALL_UPDATES)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
