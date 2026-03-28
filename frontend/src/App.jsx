@@ -64,7 +64,11 @@ function App() {
   }
 
   const handleQuantity = (dir) => {
-    WebApp.HapticFeedback.impactOccurred('light')
+    // Safely trigger haptic feedback if available
+    if (WebApp?.HapticFeedback?.impactOccurred) {
+      WebApp.HapticFeedback.impactOccurred('light')
+    }
+    
     setFormData(prev => ({
       ...prev,
       quantity: dir === 'up' ? prev.quantity + 1 : Math.max(1, prev.quantity - 1)
@@ -76,13 +80,19 @@ function App() {
     
     // Validate
     if (!formData.phone || !formData.address) {
-      WebApp.showAlert('Please fill in your phone number and address.')
+      if (WebApp?.showAlert) {
+        WebApp.showAlert('Please fill in your phone number and address.')
+      } else {
+        alert('Please fill in your phone number and address.')
+      }
       return
     }
 
     try {
       setIsSubmitting(true)
-      WebApp.HapticFeedback.impactOccurred('medium') // Premium feel
+      if (WebApp?.HapticFeedback?.impactOccurred) {
+        WebApp.HapticFeedback.impactOccurred('medium') // Premium feel
+      }
 
       // Get Telegram user info
       const userTgId = WebApp.initDataUnsafe?.user?.id || 0
@@ -103,17 +113,27 @@ function App() {
       }
 
       // Success
-      WebApp.HapticFeedback.notificationOccurred('success')
+      if (WebApp?.HapticFeedback?.notificationOccurred) {
+        WebApp.HapticFeedback.notificationOccurred('success')
+      }
       setIsSuccess(true)
       
       // Close WebApp smoothly after a delay
       setTimeout(() => {
-        WebApp.close()
+        if (WebApp?.close) {
+          WebApp.close()
+        }
       }, 3000)
 
     } catch (error) {
-       WebApp.HapticFeedback.notificationOccurred('error')
-       WebApp.showAlert(`Error submitting order: ${error.message || 'Unknown error'}`)
+       if (WebApp?.HapticFeedback?.notificationOccurred) {
+         WebApp.HapticFeedback.notificationOccurred('error')
+       }
+       if (WebApp?.showAlert) {
+         WebApp.showAlert(`Error submitting order: ${error.message || 'Unknown error'}`)
+       } else {
+         alert(`Error submitting order: ${error.message || 'Unknown error'}`)
+       }
     } finally {
       setIsSubmitting(false)
     }
@@ -162,7 +182,9 @@ function App() {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              placeholder="+251 900 000 000"
+              placeholder="0941..."
+              pattern="^0[79]\d{8}$"
+              title="Please enter a valid Ethiopian phone number starting with 09 or 07"
               className="w-full bg-input/50 border border-border rounded-xl px-4 py-3 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-inner"
               required
             />
