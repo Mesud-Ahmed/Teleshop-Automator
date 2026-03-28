@@ -94,8 +94,13 @@ function App() {
         WebApp.HapticFeedback.impactOccurred('medium') // Premium feel
       }
 
-      // Get Telegram user info
+      // Get Telegram user info and the product ID from startapp
       const userTgId = WebApp.initDataUnsafe?.user?.id || 0
+      const productId = WebApp.initDataUnsafe?.start_param || 'Unknown_Product'
+      
+      const finalNotes = formData.notes 
+        ? `[Product: ${productId.replace(/_/g, ' ')}] ${formData.notes}`
+        : `[Product: ${productId.replace(/_/g, ' ')}]`
 
       // In production, we actually insert to Supabase
       const { error } = await supabase.from('orders').insert({
@@ -103,7 +108,7 @@ function App() {
         phone: formData.phone,
         address: formData.address,
         quantity: formData.quantity,
-        notes: formData.notes,
+        notes: finalNotes,
         status: 'pending'
       })
 

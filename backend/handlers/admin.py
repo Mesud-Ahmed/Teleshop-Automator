@@ -86,16 +86,23 @@ async def post_to_channel_callback(update: Update, context: ContextTypes.DEFAULT
         await query.edit_message_text(text="Configuration error: TELEGRAM_PUBLIC_CHANNEL is not set in `.env`")
         return
 
-    bot_username = context.bot.username
-    mini_app_short_name = "app" # ⚠️ CHANGE THIS IF NEEDED!
-    bot_app_url = f"https://t.me/{bot_username}/{mini_app_short_name}"
-    
-    keyboard = [[InlineKeyboardButton("🛒 Order Now", url=bot_app_url)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
     try:
         # Group captions from all media (in case they wrote text on multiple images)
         full_caption = "\n\n".join([m['caption'] for m in pending_media if m['caption']])
+        
+        # Generate a slug from the first 40 chars of the caption to pass to the Mini App
+        import re
+        slug = re.sub(r'[^A-Za-z0-9]', '_', full_caption[:40]).strip('_')
+        slug = re.sub(r'_+', '_', slug)
+        if not slug:
+            slug = "Unknown_Product"
+
+        bot_username = context.bot.username
+        mini_app_short_name = "app" # ⚠️ CHANGE THIS IF NEEDED!
+        bot_app_url = f"https://t.me/{bot_username}/{mini_app_short_name}?startapp={slug}"
+        
+        keyboard = [[InlineKeyboardButton("🛒 Order Now", url=bot_app_url)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
         if len(pending_media) == 1:
             # Single Media Case: We can attach the button directly to the image!
