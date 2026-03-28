@@ -90,12 +90,12 @@ async def post_to_channel_callback(update: Update, context: ContextTypes.DEFAULT
         # Group captions from all media (in case they wrote text on multiple images)
         full_caption = "\n\n".join([m['caption'] for m in pending_media if m['caption']])
         
-        # Generate a slug from the first 40 chars of the caption to pass to the Mini App
-        import re
-        slug = re.sub(r'[^A-Za-z0-9]', '_', full_caption[:40]).strip('_')
-        slug = re.sub(r'_+', '_', slug)
-        if not slug:
-            slug = "Unknown_Product"
+        # Generate a Base64URL slug to safely pass Amharic/Emojis without database storage!
+        import base64
+        short_caption = full_caption.strip()[:40] if full_caption else "Direct Item"
+        slug_bytes = short_caption.encode('utf-8')
+        # Remove padding `=` because Telegram `startapp` only allows A-Za-z0-9_-
+        slug = base64.urlsafe_b64encode(slug_bytes).decode('utf-8').rstrip('=')
 
         bot_username = context.bot.username
         mini_app_short_name = "app" # ⚠️ CHANGE THIS IF NEEDED!

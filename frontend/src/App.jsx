@@ -94,13 +94,31 @@ function App() {
         WebApp.HapticFeedback.impactOccurred('medium') // Premium feel
       }
 
-      // Get Telegram user info and the product ID from startapp
+      // Get Telegram user info and extract encrypted product deep link
       const userTgId = WebApp.initDataUnsafe?.user?.id || 0
-      const productId = WebApp.initDataUnsafe?.start_param || 'Unknown_Product'
+      const startParam = WebApp.initDataUnsafe?.start_param || ''
+      
+      let productName = 'Unknown Product'
+      if (startParam && startParam !== 'Unknown_Product') {
+        try {
+          // Decode URLSafe Base64 to properly support Amharic and Emojis
+          let b64 = startParam.replace(/-/g, '+').replace(/_/g, '/')
+          while (b64.length % 4 !== 0) b64 += '='
+          
+          const binString = atob(b64)
+          const bytes = new Uint8Array(binString.length)
+          for (let i = 0; i < binString.length; i++) {
+              bytes[i] = binString.charCodeAt(i)
+          }
+          productName = new TextDecoder('utf-8').decode(bytes)
+        } catch (e) {
+          productName = startParam // Fallback to raw param
+        }
+      }
       
       const finalNotes = formData.notes 
-        ? `[Product: ${productId.replace(/_/g, ' ')}] ${formData.notes}`
-        : `[Product: ${productId.replace(/_/g, ' ')}]`
+        ? `[Product: ${productName}] ${formData.notes}`
+        : `[Product: ${productName}]`
 
       // In production, we actually insert to Supabase
       const { error } = await supabase.from('orders').insert({
