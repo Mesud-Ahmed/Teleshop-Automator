@@ -94,27 +94,12 @@ function App() {
         WebApp.HapticFeedback.impactOccurred('medium') // Premium feel
       }
 
-      // Get Telegram user info and extract encrypted product deep link
+      // Get Telegram user info
       const userTgId = WebApp.initDataUnsafe?.user?.id || 0
-      const startParam = WebApp.initDataUnsafe?.start_param || ''
       
-      let productName = 'Unknown Product'
-      if (startParam && startParam !== 'Unknown_Product') {
-        try {
-          // Decode URLSafe Base64 to properly support Amharic and Emojis
-          let b64 = startParam.replace(/-/g, '+').replace(/_/g, '/')
-          while (b64.length % 4 !== 0) b64 += '='
-          
-          const binString = atob(b64)
-          const bytes = new Uint8Array(binString.length)
-          for (let i = 0; i < binString.length; i++) {
-              bytes[i] = binString.charCodeAt(i)
-          }
-          productName = new TextDecoder('utf-8').decode(bytes)
-        } catch (e) {
-          productName = startParam // Fallback to raw param
-        }
-      }
+      // Extract Product from rock-solid URL Search Params instead of Telegram's unreliable startapp
+      const params = new URLSearchParams(window.location.search)
+      const productName = params.get('product') || 'Unknown Product'
       
       const finalNotes = formData.notes 
         ? `[Product: ${productName}] ${formData.notes}`

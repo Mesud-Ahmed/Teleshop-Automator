@@ -1,7 +1,9 @@
 import os
 from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
-from telegram.ext import ContextTypes, MessageHandler, filters, CallbackQueryHandler, Application
+import urllib.parse
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo, WebAppInfo
+from telegram.ext import ContextTypes, MessageHandler, filters, CallbackQueryHandler, CommandHandler, Application
+from db import create_product, get_product
 
 load_dotenv()
 
@@ -90,17 +92,18 @@ async def post_to_channel_callback(update: Update, context: ContextTypes.DEFAULT
         # Group captions from all media (in case they wrote text on multiple images)
         full_caption = "\n\n".join([m['caption'] for m in pending_media if m['caption']])
         
-        # Generate a Base64URL slug to safely pass Amharic/Emojis without database storage!
-        import base64
-        short_caption = full_caption.strip()[:40] if full_caption else "Direct Item"
-        slug_bytes = short_caption.encode('utf-8')
-        # Remove padding `=` because Telegram `startapp` only allows A-Za-z0-9_-
-        slug = base64.urlsafe_b64encode(slug_bytes).decode('utf-8').rstrip('=')
-
-        bot_username = context.bot.username
-        mini_app_short_name = "app" # ⚠️ CHANGE THIS IF NEEDED!
-        bot_app_url = f"https://t.me/{bot_username}/{mini_app_short_name}?startapp={slug}"
+        # Save the full caption securely to the Supabase Products Database!
+        product_temp_desc = full_caption.strip() if full_caption else "Direct Item"
+        product_id = create_product(product_temp_desc, pending_media[0]['file_id'])
         
+        bot_username = context.bot.username
+        if product_id:
+            # Format the UUID safely for the /start parameter
+            safe_id = product_id.replace('-', '_')
+            bot_app_url = f"https://t.me/{bot_username}?start={safe_id}"
+        else:
+            bot_app_url = f"https://t.me/{bot_username}?start=Unknown_Product"
+
         keyboard = [[InlineKeyboardButton("🛒 Order Now", url=bot_app_url)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -140,6 +143,29 @@ async def post_to_channel_callback(update: Update, context: ContextTypes.DEFAULT
     except Exception as e:
         await query.edit_message_text(text=f"Failed to post to channel: {str(e)}")
 
+async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles the Direct-to-DM deep link when a customer clicks Order Now in the channel."""
+    if context.args:
+        product_safe_id = context.args[0]
+        product_id = product_safe_id.replace('_', '-')
+        
+        product = get_product(product_id)
+        if product:
+            desc = product['description'][:30] # Just the title for the URL
+            encoded_desc = urllib.parse.quote(desc)
+            web_app_url = f"https://teleshop-automator.vercel.app/?product={encoded_desc}"
+            
+            keyboard = [[InlineKeyboardButton("💳 Place Order", web_app=WebAppInfo(url=web_app_url))]]
+            await update.message.reply_text(
+                f"🛍️ You are ordering:\n\n{product['description']}\n\nTap below to fill your delivery details!",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        else:
+            await update.message.reply_text("Sorry, this product could not be found or has expired.")
+    else:
+        await update.message.reply_text("Welcome to our shop! Please order from our channel.")
+
 def setup_admin_handlers(application: Application) -> None:
+    application.add_handler(CommandHandler("start", handle_start))
     application.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO, handle_admin_media))
     application.add_handler(CallbackQueryHandler(post_to_channel_callback, pattern="^post_to_channel$"))

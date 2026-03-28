@@ -36,3 +36,30 @@ def get_order(order_id: str) -> dict:
     except Exception as e:
         print(f"Error getting order: {e}")
         return None
+
+def create_product(description: str, media_file_id: str = None) -> str:
+    """Inserts a new product into the DB and returns its UUID."""
+    if not supabase:
+        return None
+    try:
+        data = {"description": description}
+        if media_file_id:
+            data["media_file_id"] = media_file_id
+        response = supabase.table("products").insert(data).execute()
+        return response.data[0]['id']
+    except Exception as e:
+        print(f"Error saving product: {e}")
+        return None
+
+def get_product(product_id: str) -> dict:
+    """Retrieves a product securely based on UUID."""
+    if not supabase:
+        return None
+    try:
+        response = supabase.table("products").select("*").eq("id", product_id).execute()
+        if len(response.data) > 0:
+            return response.data[0]
+        return None
+    except Exception as e:
+        print(f"Error getting product: {e}")
+        return None
